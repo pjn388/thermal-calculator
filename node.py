@@ -30,6 +30,8 @@ class Node(BaseNode):
         super().__init__(x, y, temperature, delta_x, delta_y, k, q_dot_gen)
         # List of boundary conditions applied to this node
         self.boundary_conditions: List[BoundaryCondition] = []
+        # Override for finite difference formula
+        self.override: Optional[sp.Expr] = None
 
         self.neighbors: Dict[str, Optional['BaseNode']] = {
             'up': None,
@@ -58,9 +60,13 @@ class Node(BaseNode):
         return (1 if self.neighbors['left'] is not None else 0) + (1 if self.neighbors['right'] is not None else 0)
 
     def compute_finite_difference(self) -> sp.Expr:
+        # Check if override is provided
+        if self.override is not None:
+            return self.override
+
         # Note: Boundary conditions are now handled by BoundaryNode objects in the mesh
         # Regular nodes compute heat transfer to all neighbors (including boundary nodes)
-        
+
         # Count actual neighbors (non-None values)
         actual_neighbors = sum(1 for neighbor in self.neighbors.values() if neighbor is not None)
 

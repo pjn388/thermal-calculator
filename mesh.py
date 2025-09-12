@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.collections import LineCollection
 from node import BaseNode, Node
+from boundary_conditions import ConstantTemperatureBC, ConvectionBC, HeatFluxBC
 
 class Mesh:
     def __init__(self, width: int, height: int, delta_x: float = 1.0, delta_y: float = 1.0, node_factory: Optional[Callable[[float, float, float, float], BaseNode]] = None):
@@ -63,8 +64,8 @@ class Mesh:
     def __getitem__(self, indices: tuple[int, int]) -> BaseNode:
         if isinstance(indices, tuple) and len(indices) == 2:
             m, n = indices
-            if 0 <= m < self.height and 0 <= n < self.width:
-                return self.nodes[m][n]
+            if 0 <= n < self.height and 0 <= m < self.width:
+                return self.nodes[n][m]
             else:
                 raise IndexError("Mesh index out of range")
         else:
@@ -186,3 +187,24 @@ class Mesh:
         ax.text(1.02, 0.5, equations_text, transform=ax.transAxes, ha='left', va='center', fontsize=8, rotation=0)
 
         return fig
+
+    def _clear_neighbor_references(self, i: int, j: int):
+        """Clear all neighbor references pointing to node at position (i, j)."""
+        # Define direction mappings: (di, dj, reverse_direction)
+        direction_map = [
+            (-1, 0, 'up'),       # if we're removing a node, its 'down' neighbor should clear 'up' reference
+            (1, 0, 'down'),      # if we're removing a node, its 'up' neighbor should clear 'down' reference
+            (0, -1, 'right'),    # if we're removing a node, its 'left' neighbor should clear 'right' reference
+            (0, 1, 'left'),      # if we're removing a node, its 'right' neighbor should clear 'left' reference
+            (-1, -1, 'right_up'),
+            (1, -1, 'right_down'),
+            (-1, 1, 'left_up'),
+            (1, 1, 'left_down')
+        ]
+
+        for di, dj, reverse_direction in direction_map:
+            ni, nj = i + di, j + dj
+            if 0 <= ni < self.height and 0 <= nj < self.width:
+                neighbor = self.nodes[ni][nj]
+                if neighbor is not None and isinstance(neighbor, Node):
+                    neighbor.neighbors[reverse_direction] = None
