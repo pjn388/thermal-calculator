@@ -180,11 +180,11 @@ class Mesh:
                 if isinstance(node, BaseNode):
                     node.render(ax)
 
-        # Add equations legend on the right
-        equations = self.get_finite_difference_equations()
-        _, symbols, _ = self.build_matrix_equation()
-        equations_text = "\n".join(f"{str(sym)}: {str(eq)} = 0" for sym, eq in zip(symbols, equations))
-        ax.text(1.02, 0.5, equations_text, transform=ax.transAxes, ha='left', va='center', fontsize=8, rotation=0)
+        # # Add equations legend on the right
+        # equations = self.get_finite_difference_equations()
+        # _, symbols, _ = self.build_matrix_equation()
+        # equations_text = "\n".join(f"{str(sym)}: {str(eq)} = 0" for sym, eq in zip(symbols, equations))
+        # ax.text(1.02, 0.5, equations_text, transform=ax.transAxes, ha='left', va='center', fontsize=8, rotation=0)
 
         return fig
 
