@@ -75,7 +75,7 @@ def get_node_temperatures(mesh: Mesh, node_indices: List[Tuple[int, int]]) -> Li
     """
     temperatures: List[float] = []
     for i, j in node_indices:
-        node = mesh.nodes[i][j]
+        node = mesh[i, j]
         if node is not None:
             temperatures.append(node.temperature)
     return temperatures
@@ -95,7 +95,7 @@ def create_node_plots() -> None:
     deltay = 0.2
 
     # Node indices to plot: [0,1], [1,1], [2,1], [3,1], [4,1]
-    node_indices = [(0, 1), (1, 1), (2, 1), (3, 1), (4, 1)]
+    node_indices = [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
 
     # Plot 1: Vary h values
     h_values = [1.0, 10.0, 50.0]
