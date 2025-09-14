@@ -13,12 +13,10 @@ class BaseNode(ABC):
         self.temperature: float = temperature
         self.delta_x: float = delta_x
         self.delta_y: float = delta_y
-        # Thermal conductivity (W/mK)
-        self.k: float = k
-        # Volumetric heat generation (W/m3)
-        self.q_dot_gen: float = q_dot_gen
-        # Create symbolic temperature variable for this node (e.g., T_0_1 for coordinates 0,1)
-        self.symbolic_temp = sp.Symbol(f'T_{int(x/delta_x)}_{int(y/delta_y)}')
+        
+        self.k: float = k # Thermal conductivity (W/mK)
+        self.q_dot_gen: float = q_dot_gen # Volumetric heat generation (W/m3)
+        self.symbolic_temp = sp.Symbol(f'T_{int(x/delta_x)}_{int(y/delta_y)}') # Create symbolic temperature variable for this node (e.g., T_0_1 for coordinates 0,1)
 
     @abstractmethod
     def render(self, ax: 'matplotlib.axes.Axes'):
@@ -28,10 +26,9 @@ class BaseNode(ABC):
 class Node(BaseNode):
     def __init__(self, x: float, y: float, temperature: float = 0.0, delta_x: float = 1.0, delta_y: float = 1.0, k: float = 1.0, q_dot_gen: float = 0.0):
         super().__init__(x, y, temperature, delta_x, delta_y, k, q_dot_gen)
-        # List of boundary conditions applied to this node
+        
         self.boundary_conditions: List[BoundaryCondition] = []
-        # Override for finite difference formula
-        self.override: Optional[sp.Expr] = None
+        self.override: Optional[sp.Expr] = None # Override for finite difference formula
 
         self.neighbors: Dict[str, Optional['BaseNode']] = {
             'up': None,
@@ -76,9 +73,8 @@ class Node(BaseNode):
         right = isinstance(self.neighbors["right"], Node)
         up = isinstance(self.neighbors["up"], Node)
         down = isinstance(self.neighbors["down"], Node)
-
-
-
+        
+        # TODO: account for diagonals connections will require understanding of desired mesh shape
         # existance of all 4 possible rectangles that contribute to this node
         left_up = isinstance(self.neighbors["left_up"], Node) and left and up
         right_up = isinstance(self.neighbors["right_up"], Node) and right and up
@@ -88,7 +84,7 @@ class Node(BaseNode):
         heat_transfer = 0
         heat_gen = 0
 
-        # Check each quadrant case and account for its contribution - only with regular Node objects
+        # Check each quadrant case and account for its contribution
 
         # up left
         if left_up:
@@ -145,16 +141,16 @@ class Node(BaseNode):
 
         # Process each boundary condition
         for bc in self.boundary_conditions:
+            # Constant temperature overwrites the entire equation
             if isinstance(bc, ConstantTemperatureBC):
-                # Constant temperature overwrites the entire equation
                 has_const_temp_bc = True
                 const_temp_value = bc.temperature
-                break  # If we have a constant temperature BC, it takes precedence
+                break
 
             if len(self.boundary_conditions) == 1:
                 boundary_contribution += area * bc.get_contribution(self)
             if len(self.boundary_conditions) == 2:
-                boundary_contribution += 0.5*area*bc.get_contribution(self) # for 2 bc give each half the surface area (if ur applying bc on different sides with different dlta x and y this will fuck up)
+                boundary_contribution += 0.5*area*bc.get_contribution(self) # for 2 bc give each half the surface area (if ur applying bc on different sides with different dlta x and y this will mess up)
 
         # Apply constant temperature BC if present
         if has_const_temp_bc:
@@ -166,7 +162,7 @@ class Node(BaseNode):
 
     def render(self, ax: 'matplotlib.axes.Axes'):
         """
-        Render this node's finite difference equation and boundary condition information.
+        Render this node's temperature and boundary condition information.
 
         Args:
             ax: Matplotlib axes object

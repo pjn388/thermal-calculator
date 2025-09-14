@@ -56,12 +56,26 @@ class Mesh:
                         ni, nj = i + di, j + dj
                         if 0 <= ni < self.height and 0 <= nj < self.width:
                             neighbor = self.nodes[ni][nj]
-                            # Both regular nodes and boundary nodes can be neighbors
                             node.set_neighbor(direction, neighbor)
                         # If out of bounds, neighbor remains None
 
-
     def __getitem__(self, indices: tuple[int, int]) -> BaseNode:
+        """
+        Retrieves a node from the mesh using (column, row) indexing.
+
+        This method allows accessing individual nodes in the 2D mesh grid
+        using a tuple for indexing, where the first element is the column (m)
+        and the second is the row (n).
+
+        Args:
+            indices (tuple[int, int]): A tuple containing two integers (m, n),
+                                      representing the column and row of the
+                                      node to retrieve.
+
+        Returns:
+            BaseNode: The node located at the specified (column, row) position
+                      in the mesh.
+        """
         if isinstance(indices, tuple) and len(indices) == 2:
             m, n = indices
             if 0 <= n < self.height and 0 <= m < self.width:
@@ -79,47 +93,31 @@ class Mesh:
                     equations.append(node.compute_finite_difference())
         return equations
     def build_matrix_equation(self):
-
         symbols = []
-
         for row in self.nodes:
-
             for node in row:
-
                 if isinstance(node, Node):
-
                     symbols.append(node.symbolic_temp)
 
         equations = self.get_finite_difference_equations()
-
         A, b = sp.linear_eq_to_matrix(equations, symbols)
-
         return A, symbols, b
 
     def solve(self):
-
         symbols = []
-
         nodes_list = []
 
         for row in self.nodes:
-
             for node in row:
-
                 if isinstance(node, Node):
-
                     symbols.append(node.symbolic_temp)
-
                     nodes_list.append(node)
 
         equations = self.get_finite_difference_equations()
-
         A, b = sp.linear_eq_to_matrix(equations, symbols)
-
         x = A.solve(b)
 
         for idx, node in enumerate(nodes_list):
-
             node.temperature = float(x[idx])
 
     def render(self) -> Figure:
@@ -148,15 +146,14 @@ class Mesh:
         for y in y_positions:
             ax.axhline(y, alpha=0.2, color='gray', linestyle='--')
 
-        # Draw lines between connected nodes (only for Node objects)
+        # Draw lines between connected nodes
         lines = []
         for row in self.nodes:
             for node in row:
-                # Only regular Node objects have neighbors and should render connections
-                if isinstance(node, Node):
-                    for neighbor in node.neighbors.values():
-                        if neighbor is not None and isinstance(neighbor, Node):
-                            lines.append([(node.x, node.y), (neighbor.x, neighbor.y)])
+                if not isinstance(node, Node): continue # Only Node objects have neighbors and should render connections
+                for neighbor in node.neighbors.values():
+                    if neighbor is not None and isinstance(neighbor, Node):
+                        lines.append([(node.x, node.y), (neighbor.x, neighbor.y)])
         if lines:
             lc = LineCollection(lines, colors='black', linewidths=0.5)
             ax.add_collection(lc)
@@ -177,8 +174,8 @@ class Mesh:
         # BoundaryNode objects display their boundary condition information in their render method
         for row in self.nodes:
             for node in row:
-                if isinstance(node, BaseNode):
-                    node.render(ax)
+                if not isinstance(node, Node): continue # Only Node objects should render
+                node.render(ax)
 
         # # Add equations legend on the right
         # equations = self.get_finite_difference_equations()
@@ -191,11 +188,12 @@ class Mesh:
     def _clear_neighbor_references(self, i: int, j: int):
         """Clear all neighbor references pointing to node at position (i, j)."""
         # Define direction mappings: (di, dj, reverse_direction)
+        # TODO: define this refernce array as global constant
         direction_map = [
-            (-1, 0, 'up'),       # if we're removing a node, its 'down' neighbor should clear 'up' reference
-            (1, 0, 'down'),      # if we're removing a node, its 'up' neighbor should clear 'down' reference
-            (0, -1, 'right'),    # if we're removing a node, its 'left' neighbor should clear 'right' reference
-            (0, 1, 'left'),      # if we're removing a node, its 'right' neighbor should clear 'left' reference
+            (-1, 0, 'up'),
+            (1, 0, 'down'),
+            (0, -1, 'right'),
+            (0, 1, 'left'),
             (-1, -1, 'right_up'),
             (1, -1, 'right_down'),
             (-1, 1, 'left_up'),

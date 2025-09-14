@@ -5,7 +5,7 @@ from mesh import Mesh
 from math import sqrt
 import matplotlib.pyplot as plt
 
-
+# function that takes all the parameters and performs the whole mesh calculation for those parameters
 def create_and_solve_mesh(k: float, q_dot_gen: float, h: float, tinf: float, const_temp: float, q_prime_prime: float, deltax: float, deltay: float, render: bool = True) -> Tuple[Mesh, Any]:
     """Create, configure, and solve the thermal mesh simulation."""
 
@@ -16,15 +16,16 @@ def create_and_solve_mesh(k: float, q_dot_gen: float, h: float, tinf: float, con
     def apply_boundary_conditions(mesh, const_temp: float, h: float, T_inf: float, q_prime_prime: float):
         """Apply boundary conditions to the mesh after initialization."""
 
-        # Bottom boundary (i=0) - constant temperature
+        # Bottom boundary - constant temperature
         for j in range(mesh.width):
             mesh.nodes[0][j].add_boundary_condition(ConstantTemperatureBC(const_temp))
 
-        # Top boundary (i=5) - convection (skip top left i.e j=0, top right is skip in the creation later)
+        # Top boundary - convection
         for j in range(1, mesh.width-1):  # Skip j=0 (left) and j=4 (right)
             mesh.nodes[5][j].add_boundary_condition(ConvectionBC(h, T_inf))
 
-        # Remove top left (i=5, j=0) and top right (i=5, j=4) nodes
+        # TODO: add a mesh.remove node function to handle rremoval of nodes more neatly
+        # Remove top left and top right nodes
         # First, clear neighbor references to these nodes
         if mesh.nodes[5][0] is not None:
             # Clear references from neighbors
@@ -36,26 +37,26 @@ def create_and_solve_mesh(k: float, q_dot_gen: float, h: float, tinf: float, con
         mesh.nodes[5][0] = None
         mesh.nodes[5][4] = None
 
-        # Right boundary (j=4) - heat flux (skip top right)
+        # Right boundary - heat flux (skip top right)
         for i in range(mesh.height-1):  # Skip i=5 (top row)
             mesh.nodes[i][4].add_boundary_condition(HeatFluxBC(q_prime_prime))
 
         mesh.nodes[4][0].add_boundary_condition(ConvectionBC(h, T_inf))
         mesh.nodes[4][4].add_boundary_condition(ConvectionBC(h, T_inf))
 
-    # Create a 5 wide x 6 tall mesh with nodes having proper material properties
+    # Create a 5 by 6 tall mesh with nodes having proper material properties
     mesh: Mesh = Mesh(5, 6, delta_x=deltax, delta_y=deltay, node_factory=node_factory)
 
     # Apply boundary conditions by indexing the mesh
     apply_boundary_conditions(mesh, const_temp, h, tinf, q_prime_prime)
 
-    # Set overrides for specific nodes
+    # Set overrides for specific nodes (complicted diagonals are a pain in the ass)
     mesh[0,4].override = (3/8)*q_dot_gen/k*deltax**2+h*(deltax/sqrt(2))*(tinf-mesh[0,4].symbolic_temp)+(deltay*q_prime_prime/2)+k*(deltay/2)*((mesh[0,4].neighbors["right"].symbolic_temp-mesh[0,4].symbolic_temp)/deltax)+k*(deltax/2)*((mesh[0,4].neighbors["down"].symbolic_temp-mesh[0,4].symbolic_temp)/deltay)
     mesh[4,4].override = (3/8)*q_dot_gen/k*deltax**2+h*(deltax/sqrt(2))*(tinf-mesh[4,4].symbolic_temp)+(deltay*q_prime_prime/2)+k*(deltay/2)*((mesh[4,4].neighbors["left"].symbolic_temp-mesh[4,4].symbolic_temp)/deltax)+k*(deltax/2)*((mesh[4,4].neighbors["down"].symbolic_temp-mesh[4,4].symbolic_temp)/deltay)
 
     mesh.solve()
 
-    # Render the mesh if requested
+    # Render the mesh if needed
     fig: Any = None
     if render:
         fig = mesh.render()
@@ -82,7 +83,6 @@ def get_node_temperatures(mesh: Mesh, node_indices: List[Tuple[int, int]]) -> Li
 
 
 def create_node_plots() -> None:
-    """Create three additional plots for different parameter variations."""
 
     # Default parameters
     k_default = 20.0
@@ -94,7 +94,6 @@ def create_node_plots() -> None:
     deltax = 0.2
     deltay = 0.2
 
-    # Node indices to plot: [0,1], [1,1], [2,1], [3,1], [4,1]
     node_indices = [(0, 2), (1, 2), (2, 2), (3, 2), (4, 2)]
 
     # Plot 1: Vary h values
@@ -105,7 +104,7 @@ def create_node_plots() -> None:
         mesh, _ = create_and_solve_mesh(k_default, q_dot_gen_default, h, tinf, const_temp, q_prime_prime, deltax, deltay, render=False)
         h_temperatures[h] = get_node_temperatures(mesh, node_indices)
 
-    # Plot 2: Vary k values with default h
+    # Plot 2: Vary k values
     k_values = [10.0, 20.0, 50.0]
     k_temperatures = {}
 
@@ -113,7 +112,7 @@ def create_node_plots() -> None:
         mesh, _ = create_and_solve_mesh(k, q_dot_gen_default, h_default, tinf, const_temp, q_prime_prime, deltax, deltay, render=False)
         k_temperatures[k] = get_node_temperatures(mesh, node_indices)
 
-    # Plot 3: Vary q_dot_gen values with default params
+    # Plot 3: Vary q_dot_gen values
     q_dot_gen_values = [0.0, 1e4, 2e4]
     q_temperatures = {}
 
